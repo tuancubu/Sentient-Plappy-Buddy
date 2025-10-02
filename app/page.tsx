@@ -259,7 +259,7 @@ export default function Home() {
               top: 0,
               width: pipeWidth,
               height: p.height,
-              background: "#ff80cb",
+              background: "#4CAF50",
               display: "flex",
               justifyContent: "center",
               alignItems: "center",
@@ -268,6 +268,18 @@ export default function Home() {
             }}
           >
             <img src="/logo_sentient.png" alt="pipe-logo" style={imageStyleForPipe} />
+            {/* Phần đầu ống */}
+            <div
+              style={{
+                position: "absolute",
+                bottom: -40,
+                left: -10,
+                width: pipeWidth + 20,
+                height: 40,
+                background: "#388E3C",
+                borderRadius: "8px",
+              }}
+            />
           </div>
 
           {/* Bottom pipe */}
@@ -281,7 +293,7 @@ export default function Home() {
                 typeof window !== "undefined"
                   ? window.innerHeight - (p.height + gap)
                   : 300,
-              background: "#ff80cb",
+              background: "#4CAF50",
               display: "flex",
               justifyContent: "center",
               alignItems: "center",
@@ -290,6 +302,18 @@ export default function Home() {
             }}
           >
             <img src="/logo_sentient.png" alt="pipe-logo" style={imageStyleForPipe} />
+            {/* Phần đầu ống */}
+            <div
+              style={{
+                position: "absolute",
+                top: -40,
+                left: -10,
+                width: pipeWidth + 20,
+                height: 40,
+                background: "#388E3C",
+                borderRadius: "8px",
+              }}
+            />
           </div>
         </div>
       ))}

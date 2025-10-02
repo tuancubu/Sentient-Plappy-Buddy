@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, useCallback } from "react";
 
-type Pipe = { x: number; height: number; passed?: boolean };
+type Pipe = { x: number; height: number; color: string; passed?: boolean };
 
 export default function Home() {
   // state
@@ -66,9 +66,16 @@ export default function Home() {
         spawnCounterRef.current = 0;
         const hMin = 100;
         const hMax = Math.max(window.innerHeight - gap - 120, 200);
-        const height =
-          Math.floor(Math.random() * (hMax - hMin + 1)) + hMin;
-        next = [...next, { x: window.innerWidth + 20, height, passed: false }];
+        const height = Math.floor(Math.random() * (hMax - hMin + 1)) + hMin;
+
+        // random màu (xanh hoặc đỏ)
+        const colors = ["#4CAF50", "#E53935"];
+        const color = colors[Math.floor(Math.random() * colors.length)];
+
+        next = [
+          ...next,
+          { x: window.innerWidth + 20, height, color, passed: false },
+        ];
       }
       return next;
     });
@@ -168,7 +175,7 @@ export default function Home() {
     };
   }, [handleJump, startGame]);
 
-  // pipe image style
+  // style cho logo trong pipe
   const imageStyleForPipe: React.CSSProperties = {
     width: "80%",
     height: "auto",
@@ -259,7 +266,7 @@ export default function Home() {
               top: 0,
               width: pipeWidth,
               height: p.height,
-              background: "#4CAF50",
+              background: p.color,
               display: "flex",
               justifyContent: "center",
               alignItems: "center",
@@ -267,18 +274,10 @@ export default function Home() {
               zIndex: 20,
             }}
           >
-            <img src="/logo_sentient.png" alt="pipe-logo" style={imageStyleForPipe} />
-            {/* Phần đầu ống */}
-            <div
-              style={{
-                position: "absolute",
-                bottom: -40,
-                left: -10,
-                width: pipeWidth + 20,
-                height: 40,
-                background: "#388E3C",
-                borderRadius: "8px",
-              }}
+            <img
+              src="/logo_sentient.png"
+              alt="pipe-logo"
+              style={imageStyleForPipe}
             />
           </div>
 
@@ -293,7 +292,7 @@ export default function Home() {
                 typeof window !== "undefined"
                   ? window.innerHeight - (p.height + gap)
                   : 300,
-              background: "#4CAF50",
+              background: p.color,
               display: "flex",
               justifyContent: "center",
               alignItems: "center",
@@ -301,18 +300,10 @@ export default function Home() {
               zIndex: 20,
             }}
           >
-            <img src="/logo_sentient.png" alt="pipe-logo" style={imageStyleForPipe} />
-            {/* Phần đầu ống */}
-            <div
-              style={{
-                position: "absolute",
-                top: -40,
-                left: -10,
-                width: pipeWidth + 20,
-                height: 40,
-                background: "#388E3C",
-                borderRadius: "8px",
-              }}
+            <img
+              src="/logo_sentient.png"
+              alt="pipe-logo"
+              style={imageStyleForPipe}
             />
           </div>
         </div>

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 type Pipe = { x: number; height: number; passed?: boolean };
 
 export default function Home() {
-  // game state
+  // state
   const [birdY, setBirdY] = useState(300);
   const [pipes, setPipes] = useState<Pipe[]>([]);
   const [score, setScore] = useState(0);
@@ -12,7 +12,7 @@ export default function Home() {
 
   // constants
   const pipeWidth = 120;
-  const gap = 280; // tăng khoảng cách để dễ chơi hơn
+  const gap = 280;
   const speed = 5;
   const gravity = 1.4;
   const jumpVel = -16;
@@ -20,6 +20,7 @@ export default function Home() {
   const birdW = 80;
   const birdH = 80;
 
+  // refs
   const velocityRef = useRef(0);
   const birdYRef = useRef(birdY);
   const pipesRef = useRef<Pipe[]>([]);
@@ -29,11 +30,13 @@ export default function Home() {
   // preload audio
   const tingRef = useRef<HTMLAudioElement | null>(null);
   useEffect(() => {
-    tingRef.current = new Audio("/ting.mp3");
-    tingRef.current.load();
+    if (typeof window !== "undefined") {
+      tingRef.current = new Audio("/ting.mp3");
+      tingRef.current.load();
+    }
   }, []);
 
-  // ensure refs and state in sync
+  // sync refs
   useEffect(() => {
     birdYRef.current = birdY;
   }, [birdY]);
@@ -41,107 +44,112 @@ export default function Home() {
     pipesRef.current = pipes;
   }, [pipes]);
 
-  // game loop
-  useEffect(() => {
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+  // GAME LOOP
+  const gameLoop = useCallback(() => {
+    velocityRef.current += gravity;
+    birdYRef.current += velocityRef.current;
+
+    if (birdYRef.current < 0) {
+      birdYRef.current = 0;
+      velocityRef.current = 0;
+    }
+    setBirdY(Math.round(birdYRef.current));
+
+    // move pipes
+    setPipes((prev) => {
+      let next = prev
+        .map((p) => ({ ...p, x: p.x - speed }))
+        .filter((p) => p.x > -pipeWidth - 20);
+
+      spawnCounterRef.current++;
+      if (spawnCounterRef.current > 100 && typeof window !== "undefined") {
+        spawnCounterRef.current = 0;
+        const hMin = 100;
+        const hMax = Math.max(window.innerHeight - gap - 120, 200);
+        const height =
+          Math.floor(Math.random() * (hMax - hMin + 1)) + hMin;
+        next = [...next, { x: window.innerWidth + 20, height, passed: false }];
+      }
+      return next;
+    });
+
+    // collision + score
+    setPipes((prev) =>
+      prev.map((p) => {
+        const birdTop = birdYRef.current;
+        const birdBottom = birdYRef.current + birdH;
+        const pipeLeft = p.x;
+        const pipeRight = p.x + pipeWidth;
+        const inX = pipeRight > birdX && pipeLeft < birdX + birdW;
+
+        if (inX) {
+          if (birdTop < p.height || birdBottom > p.height + gap) {
+            setGameOver(true);
+          }
+        }
+        if (!p.passed && p.x + pipeWidth < birdX) {
+          p.passed = true;
+          setScore((s) => s + 1);
+          try {
+            if (tingRef.current) {
+              tingRef.current.currentTime = 0;
+              tingRef.current.play();
+            }
+          } catch {}
+        }
+        return p;
+      })
+    );
+
+    // ground
+    if (
+      typeof window !== "undefined" &&
+      birdYRef.current + birdH > window.innerHeight
+    ) {
+      setGameOver(true);
+    }
+
+    if (!gameOver) {
+      rafRef.current = requestAnimationFrame(gameLoop);
+    } else {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+  }, [gameOver]);
+
+  // START GAME
+  const startGame = useCallback(() => {
+    // reset state
+    setPipes([]);
+    setScore(0);
+    setGameOver(false);
     velocityRef.current = 0;
     birdYRef.current = 300;
     setBirdY(300);
+    spawnCounterRef.current = 0;
 
-    const loop = () => {
-      velocityRef.current += gravity;
-      birdYRef.current += velocityRef.current;
-      if (birdYRef.current < 0) {
-        birdYRef.current = 0;
-        velocityRef.current = 0;
-      }
-      setBirdY(Math.round(birdYRef.current));
-
-      // move pipes
-      setPipes((prev) => {
-        let next = prev
-          .map((p) => ({ ...p, x: p.x - speed }))
-          .filter((p) => p.x > -pipeWidth - 20);
-        spawnCounterRef.current++;
-        if (spawnCounterRef.current > 100) {
-          spawnCounterRef.current = 0;
-          const hMin = 100;
-          const hMax = Math.max(window.innerHeight - gap - 120, 200);
-          const height = Math.floor(Math.random() * (hMax - hMin + 1)) + hMin;
-          next = [...next, { x: window.innerWidth + 20, height, passed: false }];
-        }
-        return next;
-      });
-
-      // collision & scoring
-      setPipes((prev) => {
-        const updated = prev.map((p) => {
-          const birdTop = birdYRef.current;
-          const birdBottom = birdYRef.current + birdH;
-          const pipeLeft = p.x;
-          const pipeRight = p.x + pipeWidth;
-          const inX = pipeRight > birdX && pipeLeft < birdX + birdW;
-          if (inX) {
-            if (birdTop < p.height || birdBottom > p.height + gap) {
-              setGameOver(true);
-            }
-          }
-          // scoring
-          if (!p.passed && p.x + pipeWidth < birdX) {
-            p.passed = true;
-            setScore((s) => s + 1);
-            try {
-              if (tingRef.current) {
-                tingRef.current.currentTime = 0;
-                tingRef.current.play();
-              }
-            } catch (err) {
-              // ignore
-            }
-          }
-          return p;
-        });
-        return updated;
-      });
-
-      // ground hit
-      if (birdYRef.current + birdH > window.innerHeight) {
-        setGameOver(true);
-      }
-
-      if (!gameOver) {
-        rafRef.current = requestAnimationFrame(loop);
-      } else {
-        if (rafRef.current) cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
-      }
-    };
-
-    rafRef.current = requestAnimationFrame(loop);
-    return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    // clear old loop
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
-    };
-  }, []);
+    }
 
+    // start new loop
+    rafRef.current = requestAnimationFrame(gameLoop);
+  }, [gameLoop]);
+
+  // JUMP
   const handleJump = useCallback(() => {
     if (gameOver) {
-      setPipes([]);
-      setScore(0);
-      setGameOver(false);
-      velocityRef.current = 0;
-      birdYRef.current = Math.min(300, window.innerHeight / 2);
-      setBirdY(Math.round(birdYRef.current));
-      spawnCounterRef.current = 0;
-      if (rafRef.current === null) {
-        rafRef.current = requestAnimationFrame(() => {});
-      }
+      startGame();
       return;
     }
     velocityRef.current = jumpVel;
-  }, [gameOver]);
+  }, [gameOver, startGame]);
 
+  // mount listener
   useEffect(() => {
+    startGame();
     const onKey = (e: KeyboardEvent) => {
       if (e.code === "Space") {
         e.preventDefault();
@@ -151,13 +159,16 @@ export default function Home() {
     window.addEventListener("keydown", onKey);
     window.addEventListener("touchstart", handleJump);
     window.addEventListener("mousedown", handleJump);
+
     return () => {
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("touchstart", handleJump);
       window.removeEventListener("mousedown", handleJump);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [handleJump]);
+  }, [handleJump, startGame]);
 
+  // pipe image style
   const imageStyleForPipe: React.CSSProperties = {
     width: "80%",
     height: "auto",
@@ -228,7 +239,10 @@ export default function Home() {
           top: birdY,
           width: birdW,
           height: birdH,
-          transform: `rotate(${Math.max(-25, Math.min(25, velocityRef.current * 2))}deg)`,
+          transform: `rotate(${Math.max(
+            -25,
+            Math.min(25, velocityRef.current * 2)
+          )}deg)`,
           transition: "transform 60ms linear",
           zIndex: 40,
         }}
@@ -263,7 +277,10 @@ export default function Home() {
               left: p.x,
               top: p.height + gap,
               width: pipeWidth,
-              height: window.innerHeight - (p.height + gap),
+              height:
+                typeof window !== "undefined"
+                  ? window.innerHeight - (p.height + gap)
+                  : 300,
               background: "#ff80cb",
               display: "flex",
               justifyContent: "center",
